@@ -98,21 +98,24 @@ def _rust_wasm_bindgen_impl(ctx):
         progress_message_label = ctx.file.wasm_file.path
         input_file = ctx.file.wasm_file
 
-    bindgen_wasm_module = ctx.actions.declare_file(ctx.attr.name + "_bg.wasm")
+    bindgen_wasm_module = ctx.actions.declare_file(ctx.attr.out_name + "_bg.wasm")
 
-    js_out = [ctx.actions.declare_file(ctx.attr.name + ".js")]
-    ts_out = [ctx.actions.declare_file(ctx.attr.name + ".d.ts")]
+    js_out = [ctx.actions.declare_file(ctx.attr.out_name + ".js")]
+    ts_out = [ctx.actions.declare_file(ctx.attr.out_name + ".d.ts")]
+
+    if ctx.attr.target == "web" or ctx.attr.target == "bundler":
+        js_out.append(ctx.actions.declare_directory("snippets"))
 
     if ctx.attr.target == "bundler":
-        js_out.append(ctx.actions.declare_file(ctx.attr.name + "_bg.js"))
-        ts_out.append(ctx.actions.declare_file(ctx.attr.name + "_bg.wasm.d.ts"))
+        js_out.append(ctx.actions.declare_file(ctx.attr.out_name + "_bg.js"))
+        ts_out.append(ctx.actions.declare_file(ctx.attr.out_name + "_bg.wasm.d.ts"))
 
     outputs = [bindgen_wasm_module] + js_out + ts_out
 
     args = ctx.actions.args()
     args.add("--target", ctx.attr.target)
     args.add("--out-dir", bindgen_wasm_module.dirname)
-    args.add("--out-name", ctx.attr.name)
+    args.add("--out-name", ctx.attr.out_name)
     args.add_all(ctx.attr.bindgen_flags)
     args.add(input_file)
 
@@ -148,6 +151,10 @@ rust_wasm_bindgen = rule(
     implementation = _rust_wasm_bindgen_impl,
     doc = _WASM_BINDGEN_DOC,
     attrs = {
+        "out_name": attr.string(
+            doc = "The output name used by `wasm_bindgen`.",
+            mandatory = True,
+        ),
         "bindgen_flags": attr.string_list(
             doc = "Flags to pass directly to the bindgen executable. See https://github.com/rustwasm/wasm-bindgen/ for details.",
         ),
