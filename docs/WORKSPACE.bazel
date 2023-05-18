@@ -1,5 +1,55 @@
 workspace(name = "rules_rust_docs")
 
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "io_tweag_rules_nixpkgs",
+    sha256 = "e896cbb24a1b621c6414cb097e39bae409a8d7096210ff7d6c84fa7366378576",
+    strip_prefix = "rules_nixpkgs-57ade1d276893d108d579e561a55e4814218b0b5",
+    urls = ["https://github.com/tweag/rules_nixpkgs/archive/57ade1d276893d108d579e561a55e4814218b0b5.tar.gz"],
+)
+
+load("@io_tweag_rules_nixpkgs//nixpkgs:repositories.bzl", "rules_nixpkgs_dependencies")
+
+rules_nixpkgs_dependencies()
+
+# http_archive(
+#     name = "rules_java",
+#     urls = [
+#         "https://github.com/bazelbuild/rules_java/releases/download/5.5.0/rules_java-5.5.0.tar.gz",
+#     ],
+#     sha256 = "bcfabfb407cb0c8820141310faa102f7fb92cc806b0f0e26a625196101b0b57e",
+# )
+# load("@rules_java//java:repositories.bzl", "rules_java_dependencies", "rules_java_toolchains")
+# rules_java_dependencies()
+
+load("@rules_nixpkgs_core//:nixpkgs.bzl", "nixpkgs_local_repository")
+
+nixpkgs_local_repository(
+    name = "nixpkgs",
+    nix_file = "//:nixpkgs.nix",
+    nix_file_deps = ["//:flake.lock"],
+)
+
+load("@rules_nixpkgs_cc//:cc.bzl", "nixpkgs_cc_configure")
+
+nixpkgs_cc_configure(
+    name = "nixpkgs_config_cc",
+    repository = "@nixpkgs",
+)
+
+load("@rules_nixpkgs_java//:java.bzl", "nixpkgs_java_configure")
+
+nixpkgs_java_configure(
+    attribute_path = "jdk11.home",
+    repository = "@nixpkgs",
+    toolchain = True,
+    toolchain_name = "nixpkgs_java",
+    toolchain_version = "11",
+)
+
+# rules_java_toolchains()
+
 local_repository(
     name = "rules_rust",
     path = "..",
@@ -33,7 +83,6 @@ rust_wasm_bindgen_dependencies()
 
 rust_wasm_bindgen_register_toolchains()
 
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "io_bazel_stardoc",
