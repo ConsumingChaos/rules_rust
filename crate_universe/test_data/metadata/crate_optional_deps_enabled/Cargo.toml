@@ -1,7 +1,7 @@
 [package]
 name = "crate-with-optional-deps"
 version = "0.1.0"
-edition = "2021" # make sure resolver=2 is enabled for this test
+edition = "2021"                  # make sure resolver=2 is enabled for this test
 
 # Required to satisfy cargo but no `lib.rs` is expected to
 # exist within test data.
@@ -13,3 +13,5 @@ path = "lib.rs"
 clap = { version = "=4.1.1", default-features = false, features = ["color"] }
 # the mio crate should be enabled by default on linux, but not on other platforms
 notify = "5.1"
+# the wgpu-hal crate has optional dependency hassle-rs who's feature is only enabled on x86_64-pc-windows-msvc
+wgpu-hal = "0.15.3"

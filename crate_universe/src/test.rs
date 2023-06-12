@@ -42,6 +42,7 @@ pub fn mock_cargo_lock_package() -> cargo_lock::Package {
     .unwrap()
 }
 
+// To regenerate metadata, run `bazel run //crate_universe/test_data/private:metadata_generator`
 pub mod metadata {
     pub fn alias() -> cargo_metadata::Metadata {
         serde_json::from_str(include_str!(concat!(

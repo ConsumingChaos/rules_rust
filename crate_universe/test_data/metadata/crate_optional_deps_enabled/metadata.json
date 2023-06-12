@@ -9447,7 +9447,8 @@
             {
                 "dependencies": [
                     "clap 4.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
-                    "notify 5.1.0 (registry+https://github.com/rust-lang/crates.io-index)"
+                    "notify 5.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+                    "wgpu-hal 0.15.4 (registry+https://github.com/rust-lang/crates.io-index)"
                 ],
                 "deps": [
                     {
@@ -10355,14 +10356,18 @@
                 ],
                 "features": [
                     "consoleapi",
+                    "dcomp",
                     "errhandlingapi",
                     "fileapi",
+                    "libloaderapi",
                     "minwindef",
                     "ntdef",
                     "processenv",
+                    "profileapi",
                     "std",
                     "winbase",
                     "wincon",
+                    "windef",
                     "winerror",
                     "winnt"
                 ],
@@ -10544,7 +10549,9 @@
                     "Win32_System",
                     "Win32_System_Console",
                     "Win32_System_IO",
+                    "Win32_System_LibraryLoader",
                     "Win32_System_Pipes",
+                    "Win32_System_SystemServices",
                     "Win32_System_Threading",
                     "Win32_System_WindowsProgramming",
                     "default"
