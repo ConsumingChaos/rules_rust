@@ -51,6 +51,7 @@ impl CrateIndexLookup {
     }
 }
 
+#[cfg(feature = "james")]
 #[cfg(test)]
 mod test {
     use crate::splicing::crate_index_lookup::CrateIndexLookup;

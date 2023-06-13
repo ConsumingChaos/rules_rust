@@ -74,7 +74,7 @@ impl MetadataAnnotation {
             .map(|node| {
                 (
                     node.id.clone(),
-                    Self::annotate_crate(node.clone(), &metadata),
+                    Self::annotate_crate(node.clone(), &metadata, &workspace_metadata),
                 )
             })
             .collect();
@@ -94,9 +94,13 @@ impl MetadataAnnotation {
         }
     }
 
-    fn annotate_crate(node: Node, metadata: &CargoMetadata) -> CrateAnnotation {
+    fn annotate_crate(
+        node: Node,
+        metadata: &CargoMetadata,
+        workspace_metadata: &WorkspaceMetadata,
+    ) -> CrateAnnotation {
         // Gather all dependencies
-        let deps = DependencySet::new_for_node(&node, metadata);
+        let deps = DependencySet::new_for_node(&node, metadata, workspace_metadata);
 
         CrateAnnotation { node, deps }
     }
@@ -175,7 +179,7 @@ impl LockfileAnnotation {
             .expect("Metadata is expected to have a resolve graph")
             .nodes
             .iter()
-            .filter(|node| !is_workspace_member(&node.id, metadata))
+            .filter(|node| !is_workspace_member(&node.id, metadata, &workspace_metadata))
             .collect();
 
         // Produce source annotations for each crate in the resolve graph
@@ -435,22 +439,22 @@ impl Annotations {
 }
 
 fn find_workspace_metadata(cargo_metadata: &CargoMetadata) -> Option<WorkspaceMetadata> {
-    WorkspaceMetadata::try_from(cargo_metadata.workspace_metadata.clone()).ok()
+    WorkspaceMetadata::try_from(&cargo_metadata.workspace_metadata).ok()
 }
 
 /// Determines whether or not a package is a workspace member. This follows
 /// the Cargo definition of a workspace memeber with one exception where
 /// "extra workspace members" are *not* treated as workspace members
-fn is_workspace_member(id: &PackageId, cargo_metadata: &CargoMetadata) -> bool {
+fn is_workspace_member(
+    id: &PackageId,
+    cargo_metadata: &CargoMetadata,
+    workspace_metadata: &WorkspaceMetadata,
+) -> bool {
     if cargo_metadata.workspace_members.contains(id) {
-        if let Some(data) = find_workspace_metadata(cargo_metadata) {
-            let pkg = &cargo_metadata[id];
-            let crate_id = CrateId::new(pkg.name.clone(), pkg.version.to_string());
+        let pkg = &cargo_metadata[id];
+        let crate_id = CrateId::new(pkg.name.clone(), pkg.version.to_string());
 
-            !data.sources.contains_key(&crate_id)
-        } else {
-            true
-        }
+        !workspace_metadata.sources.contains_key(&crate_id)
     } else {
         false
     }

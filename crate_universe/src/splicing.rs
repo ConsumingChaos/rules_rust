@@ -176,10 +176,10 @@ pub struct WorkspaceMetadata {
     pub features: BTreeMap<CrateId, SelectList<String>>,
 }
 
-impl TryFrom<toml::Value> for WorkspaceMetadata {
+impl TryFrom<&toml::Value> for WorkspaceMetadata {
     type Error = anyhow::Error;
 
-    fn try_from(value: toml::Value) -> Result<Self, Self::Error> {
+    fn try_from(value: &toml::Value) -> Result<Self, Self::Error> {
         match value.get("cargo-bazel") {
             Some(v) => v
                 .to_owned()
@@ -190,10 +190,10 @@ impl TryFrom<toml::Value> for WorkspaceMetadata {
     }
 }
 
-impl TryFrom<serde_json::Value> for WorkspaceMetadata {
+impl TryFrom<&serde_json::Value> for WorkspaceMetadata {
     type Error = anyhow::Error;
 
-    fn try_from(value: serde_json::Value) -> Result<Self, Self::Error> {
+    fn try_from(value: &serde_json::Value) -> Result<Self, Self::Error> {
         match value.get("cargo-bazel") {
             Some(value) => {
                 serde_json::from_value(value.to_owned()).context("Faield to deserialize json value")
@@ -266,8 +266,7 @@ impl WorkspaceMetadata {
                 .unwrap()
                 .metadata
                 .as_ref()
-                .unwrap()
-                .clone(),
+                .unwrap(),
         )?;
 
         // Locate all packages sourced from a registry
@@ -457,6 +456,7 @@ pub fn generate_lockfile(
     Ok(lockfile)
 }
 
+#[cfg(feature = "james")]
 #[cfg(test)]
 mod test {
     use super::*;

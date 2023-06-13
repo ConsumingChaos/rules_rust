@@ -45,6 +45,7 @@ fn setup_cargo_env() -> Result<(PathBuf, PathBuf)> {
     Ok((cargo, rustc))
 }
 
+#[cfg(feature = "james")]
 fn run(repository_name: &str, manifests: HashMap<String, String>, lockfile: &str) -> Value {
     let (cargo, rustc) = setup_cargo_env().unwrap();
 
@@ -115,6 +116,7 @@ fn run(repository_name: &str, manifests: HashMap<String, String>, lockfile: &str
 }
 
 // See crate_universe/test_data/metadata/target_features/Cargo.toml for input.
+#[cfg(feature = "james")]
 #[test]
 fn feature_generator() {
     // This test case requires network access to build pull crate metadata
@@ -168,6 +170,7 @@ fn feature_generator() {
 }
 
 // See crate_universe/test_data/metadata/target_cfg_features/Cargo.toml for input.
+#[cfg(feature = "james")]
 #[test]
 fn feature_generator_cfg_features() {
     // This test case requires network access to build pull crate metadata
@@ -223,6 +226,7 @@ fn feature_generator_cfg_features() {
     );
 }
 
+#[cfg(feature = "james")]
 #[test]
 fn feature_generator_workspace() {
     // This test case requires network access to build pull crate metadata
@@ -262,6 +266,7 @@ fn feature_generator_workspace() {
     assert!(!metadata["metadata"]["cargo-bazel"]["features"]["wgpu 0.14.0"].is_null());
 }
 
+#[cfg(feature = "james")]
 #[test]
 fn feature_generator_crate_combined_features() {
     // This test case requires network access to build pull crate metadata

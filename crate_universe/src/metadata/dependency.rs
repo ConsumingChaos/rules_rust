@@ -7,6 +7,7 @@ use cargo_metadata::{
 use cargo_platform::Platform;
 use serde::{Deserialize, Serialize};
 
+use crate::splicing::WorkspaceMetadata;
 use crate::utils::sanitize_module_name;
 use crate::utils::starlark::{Select, SelectList};
 
@@ -37,7 +38,12 @@ pub struct DependencySet {
 
 impl DependencySet {
     /// Collect all dependencies for a given node in the resolve graph.
-    pub fn new_for_node(node: &Node, metadata: &CargoMetadata) -> Self {
+    pub fn new_for_node(
+        node: &Node,
+        metadata: &CargoMetadata,
+        workspace_metadata: &WorkspaceMetadata,
+        platforms: &Platforms,
+    ) -> Self {
         let (normal_dev_deps, normal_deps) = {
             let (dev, normal) = node
                 .deps
@@ -49,8 +55,20 @@ impl DependencySet {
                 .partition(|dep| is_dev_dependency(dep));
 
             (
-                collect_deps_selectable(node, dev, metadata, DependencyKind::Development),
-                collect_deps_selectable(node, normal, metadata, DependencyKind::Normal),
+                collect_deps_selectable(
+                    node,
+                    dev,
+                    metadata,
+                    DependencyKind::Development,
+                    workspace_metadata,
+                ),
+                collect_deps_selectable(
+                    node,
+                    normal,
+                    metadata,
+                    DependencyKind::Normal,
+                    workspace_metadata,
+                ),
             )
         };
 
@@ -65,8 +83,20 @@ impl DependencySet {
                 .partition(|dep| is_dev_dependency(dep));
 
             (
-                collect_deps_selectable(node, dev, metadata, DependencyKind::Development),
-                collect_deps_selectable(node, normal, metadata, DependencyKind::Normal),
+                collect_deps_selectable(
+                    node,
+                    dev,
+                    metadata,
+                    DependencyKind::Development,
+                    workspace_metadata,
+                ),
+                collect_deps_selectable(
+                    node,
+                    normal,
+                    metadata,
+                    DependencyKind::Normal,
+                    workspace_metadata,
+                ),
             )
         };
 
@@ -83,8 +113,20 @@ impl DependencySet {
                 .partition(|dep| is_proc_macro_package(&metadata[&dep.pkg]));
 
             (
-                collect_deps_selectable(node, proc_macro, metadata, DependencyKind::Build),
-                collect_deps_selectable(node, normal, metadata, DependencyKind::Build),
+                collect_deps_selectable(
+                    node,
+                    proc_macro,
+                    metadata,
+                    DependencyKind::Build,
+                    workspace_metadata,
+                ),
+                collect_deps_selectable(
+                    node,
+                    normal,
+                    metadata,
+                    DependencyKind::Build,
+                    workspace_metadata,
+                ),
             )
         };
 
@@ -129,6 +171,7 @@ fn is_optional_crate_enabled(
     target: Option<&Platform>,
     metadata: &CargoMetadata,
     kind: DependencyKind,
+    workspace_metadata: &WorkspaceMetadata,
 ) -> bool {
     let pkg = &metadata[&parent.id];
 
@@ -160,8 +203,11 @@ fn collect_deps_selectable(
     deps: Vec<&NodeDep>,
     metadata: &cargo_metadata::Metadata,
     kind: DependencyKind,
+    workspace_metadata: &WorkspaceMetadata,
 ) -> SelectList<Dependency> {
     let mut selectable = SelectList::default();
+
+    let node_pkg = &metadata[&node.id];
 
     for dep in deps.into_iter() {
         let dep_pkg = &metadata[&dep.pkg];
@@ -169,8 +215,40 @@ fn collect_deps_selectable(
             .expect("Nodes Dependencies are expected to exclusively be library-like targets");
         let alias = get_target_alias(&dep.name, dep_pkg);
 
+        let dependency = Dependency {
+            package_id: dep.pkg.clone(),
+            target_name: target_name,
+            alias: alias,
+        };
+
         for kind_info in &dep.dep_kinds {
-            if is_optional_crate_enabled(node, dep, kind_info.target.as_ref(), metadata, kind) {
+            // Check if dependency is unconditionally required.
+            let required = node_pkg
+                .dependencies
+                .iter()
+                .filter(|&d| d.target.as_ref() == kind_info.target.as_ref())
+                .find(|&d| sanitize_module_name(&d.name) == dep.name)
+                .expect("Node Dependencies are guaranteed to exist in the Package dependencies")
+                .optional;
+            if !optional {
+                selectable.insert(
+                    dependency,
+                    kind_info
+                        .target
+                        .as_ref()
+                        .map(|platform| platform.to_string()),
+                );
+                continue;
+            }
+
+            process_dep();
+            if is_optional_crate_enabled(
+                node,
+                dep,
+                kind_info.target.as_ref(),
+                metadata,
+                workspace_metadata,
+            ) {
                 selectable.insert(
                     Dependency {
                         package_id: dep.pkg.clone(),
@@ -288,6 +366,7 @@ fn get_target_alias(target_name: &str, package: &Package) -> Option<String> {
 #[cfg(test)]
 mod test {
     use std::collections::BTreeSet;
+    use std::convert::TryFrom;
 
     use super::*;
 
@@ -432,10 +511,13 @@ mod test {
     #[test]
     fn sys_dependencies() {
         let metadata = metadata::build_scripts();
+        let workspace_metadata =
+            WorkspaceMetadata::try_from(&metadata.workspace_metadata).unwrap_or_default();
 
         let openssl_node = find_metadata_node("openssl", &metadata);
 
-        let dependencies = DependencySet::new_for_node(openssl_node, &metadata);
+        let dependencies =
+            DependencySet::new_for_node(openssl_node, &metadata, &workspace_metadata);
 
         let normal_sys_crate = dependencies
             .normal_deps
@@ -464,9 +546,11 @@ mod test {
     #[test]
     fn sys_crate_with_build_script() {
         let metadata = metadata::build_scripts();
+        let workspace_metadata =
+            WorkspaceMetadata::try_from(&metadata.workspace_metadata).unwrap_or_default();
 
         let libssh2 = find_metadata_node("libssh2-sys", &metadata);
-        let libssh2_depset = DependencySet::new_for_node(libssh2, &metadata);
+        let libssh2_depset = DependencySet::new_for_node(libssh2, &metadata, &workspace_metadata);
 
         // Collect build dependencies into a set
         let build_deps: BTreeSet<String> = libssh2_depset
@@ -527,9 +611,12 @@ mod test {
     #[test]
     fn tracked_aliases() {
         let metadata = metadata::alias();
+        let workspace_metadata =
+            WorkspaceMetadata::try_from(&metadata.workspace_metadata).unwrap_or_default();
 
         let aliases_node = find_metadata_node("aliases", &metadata);
-        let dependencies = DependencySet::new_for_node(aliases_node, &metadata);
+        let dependencies =
+            DependencySet::new_for_node(aliases_node, &metadata, &workspace_metadata);
 
         let aliases: Vec<&Dependency> = dependencies
             .normal_deps
@@ -554,9 +641,11 @@ mod test {
     #[test]
     fn matched_rlib() {
         let metadata = metadata::crate_types();
+        let workspace_metadata =
+            WorkspaceMetadata::try_from(&metadata.workspace_metadata).unwrap_or_default();
 
         let node = find_metadata_node("crate-types", &metadata);
-        let dependencies = DependencySet::new_for_node(node, &metadata);
+        let dependencies = DependencySet::new_for_node(node, &metadata, &workspace_metadata);
 
         let rlib_deps: Vec<&Dependency> = dependencies
             .normal_deps
@@ -580,9 +669,11 @@ mod test {
     #[test]
     fn multiple_dep_kinds() {
         let metadata = metadata::multi_cfg_dep();
+        let workspace_metadata =
+            WorkspaceMetadata::try_from(&metadata.workspace_metadata).unwrap_or_default();
 
         let node = find_metadata_node("cpufeatures", &metadata);
-        let dependencies = DependencySet::new_for_node(node, &metadata);
+        let dependencies = DependencySet::new_for_node(node, &metadata, &workspace_metadata);
 
         let libc_cfgs: BTreeSet<String> = dependencies
             .normal_deps
@@ -636,9 +727,11 @@ mod test {
     #[test]
     fn optional_deps_disabled() {
         let metadata = metadata::optional_deps_disabled();
+        let workspace_metadata =
+            WorkspaceMetadata::try_from(&metadata.workspace_metadata).unwrap_or_default();
 
         let node = find_metadata_node("clap", &metadata);
-        let dependencies = DependencySet::new_for_node(node, &metadata);
+        let dependencies = DependencySet::new_for_node(node, &metadata, &workspace_metadata);
 
         assert!(!dependencies
             .normal_deps
@@ -663,9 +756,11 @@ mod test {
     #[test]
     fn optional_deps_enabled() {
         let metadata = metadata::optional_deps_enabled();
+        let workspace_metadata =
+            WorkspaceMetadata::try_from(&metadata.workspace_metadata).unwrap_or_default();
 
         let clap = find_metadata_node("clap", &metadata);
-        let clap_depset = DependencySet::new_for_node(clap, &metadata);
+        let clap_depset = DependencySet::new_for_node(clap, &metadata, &workspace_metadata);
         assert_eq!(
             clap_depset
                 .normal_deps
@@ -679,7 +774,7 @@ mod test {
         );
 
         let notify = find_metadata_node("notify", &metadata);
-        let notify_depset = DependencySet::new_for_node(notify, &metadata);
+        let notify_depset = DependencySet::new_for_node(notify, &metadata, &workspace_metadata);
 
         // mio is not present in the common list of dependencies
         assert!(!notify_depset
@@ -703,7 +798,7 @@ mod test {
             .any(|dep| { dep.target_name == "mio" }));
 
         let wgpu_hal = find_metadata_node("wgpu-hal", &metadata);
-        let wgpu_hal_depset = DependencySet::new_for_node(wgpu_hal, &metadata);
+        let wgpu_hal_depset = DependencySet::new_for_node(wgpu_hal, &metadata, &workspace_metadata);
 
         // hassle_rs is not present in the common list of dependencies
         assert!(!wgpu_hal_depset

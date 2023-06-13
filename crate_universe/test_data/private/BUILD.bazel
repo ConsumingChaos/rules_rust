@@ -8,7 +8,7 @@ py_binary(
         "@rules_rust//rust/toolchain:current_rustc_files",
     ],
     env = {
-        "CARGO": "$(rootpath @rules_rust//rust/toolchain:current_cargo_files)",
-        "RUSTC": "$(rootpath @rules_rust//rust/toolchain:current_rustc_files)",
+        "CARGO": "/nix/store/cmqr5plybykwlb7a5cq0bhyc3hv7ww64-rust-mixed/bin/cargo",
+        "RUSTC": "/nix/store/cmqr5plybykwlb7a5cq0bhyc3hv7ww64-rust-mixed/bin/rustc",
     },
 )
