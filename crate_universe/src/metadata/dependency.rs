@@ -701,6 +701,30 @@ mod test {
             .get_iter(Some(&"cfg(target_os = \"macos\")".to_string()))
             .expect("Iterating over known keys should never panic")
             .any(|dep| { dep.target_name == "mio" }));
+
+        let wgpu_hal = find_metadata_node("wgpu-hal", &metadata);
+        let wgpu_hal_depset = DependencySet::new_for_node(wgpu_hal, &metadata);
+
+        // hassle_rs is not present in the common list of dependencies
+        assert!(!wgpu_hal_depset
+            .normal_deps
+            .get_iter(None)
+            .expect("Iterating over known keys should never panic")
+            .any(|dep| { dep.target_name == "hassle_rs" }));
+
+        // hassle_rs is an optional dependency who's feature is enabled on windows
+        assert!(wgpu_hal_depset
+            .normal_deps
+            .get_iter(Some(&"x86_64-pc-windows-msvc".to_string()))
+            .expect("Iterating over known keys should never panic")
+            .any(|dep| { dep.target_name == "hassle_rs" }));
+
+        // hassle_rs is an optional dependency who's feature is not enabled on linux
+        assert!(!wgpu_hal_depset
+            .normal_deps
+            .get_iter(Some(&"x86_64-unknown-linux-gnu".to_string()))
+            .expect("Iterating over known keys should never panic")
+            .any(|dep| { dep.target_name == "hassle_rs" }));
     }
 
     #[test]
