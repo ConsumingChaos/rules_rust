@@ -26,7 +26,7 @@ llvm_cc_toolchain_config(
         "m",
     ],
     builtin_library_directories = [
-        "{}/wasi-sysroot/lib/wasm32-wasi".format(SDK_WASM32_WASI),
+        "{}/wasi-sysroot/lib/wasm32-wasip1".format(SDK_WASM32_WASI),
     ],
     clang = CLANG,
     compile_flags = [
@@ -44,7 +44,7 @@ llvm_cc_toolchain_config(
         "--fatal-warnings",
         # `wasm-ld` doesn't respect the verbatim `-l:<name>` syntax.
         "{}/lib/wasi/libclang_rt.builtins-wasm32.a".format(LIBCLANG_RT_WASM32),
-        "{}/wasi-sysroot/lib/wasm32-wasi/crt1.o".format(SDK_WASM32_WASI),
+        "{}/wasi-sysroot/lib/wasm32-wasip1/crt1.o".format(SDK_WASM32_WASI),
     ],
     llvm = LLVM,
     opt_compile_flags = [],
@@ -53,7 +53,7 @@ llvm_cc_toolchain_config(
     ],
     supports_start_end_lib = False,
     tags = ["manual"],
-    target = "wasm32-wasi",
+    target = "wasm32-wasip1",
 )
 
 cc_toolchain(
