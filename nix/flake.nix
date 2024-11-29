@@ -15,7 +15,7 @@
           {
             packages = [
               pkgs.bazel-buildtools
-              pkgs.bazel_6
+              pkgs.bazel_7
               pkgs.cargo
               pkgs.rustc
               pkgs.rustfmt

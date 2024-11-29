@@ -17,7 +17,7 @@
     let
       pkgs = import nixpkgs { system = "x86_64-linux"; };
 
-      llvm = pkgs.llvmPackages_16;
+      llvm = pkgs.llvmPackages_18;
 
       rust = with fenix.packages."x86_64-linux"; combine [
         complete.cargo
@@ -31,7 +31,7 @@
         targets."aarch64-linux-android".latest.rust-std
         targets."aarch64-unknown-linux-gnu".latest.rust-std
         targets."wasm32-unknown-unknown".latest.rust-std
-        targets."wasm32-wasi".latest.rust-std
+        targets."wasm32-wasip1".latest.rust-std
         targets."x86_64-apple-darwin".latest.rust-std
         targets."x86_64-pc-windows-msvc".latest.rust-std
         targets."x86_64-unknown-linux-gnu".latest.rust-std
@@ -114,7 +114,6 @@
         paths = [
           llvm.libcxx.out
           llvm.libcxx.dev
-          llvm.libcxxabi.out
           llvm.libunwind.out
           pkgs.gcc13.cc.libgcc.out
           pkgs.gcc13.cc.libgcc.libgcc
@@ -133,7 +132,7 @@
             LLVM = "${llvm.bintools-unwrapped}"
             CLANG = "${llvm.clang-unwrapped}"
             CLANG_LIB = "${llvm.clang-unwrapped.lib}"
-            CLANG_LIB_VERSION = "16"
+            CLANG_LIB_VERSION = "18"
 
             NIXOS_DYNAMIC_LINKER = "${pkgs.glibc.out}/lib64/ld-linux-x86-64.so.2"
             LIBCLANG_RT_WASM32 = "${libclang_rt_wasm32}"
